@@ -1,35 +1,57 @@
 # Mini Rastreador de Pedidos
 
-API REST em Java + Spring Boot para rastreamento simplificado de pedidos de delivery.  
-Desafio técnico — autenticação JWT, persistência H2 e endpoints de pedidos.
+Sistema simplificado de rastreamento de pedidos de delivery (desafio técnico Foody).
 
+Monorepo com:
+
+- **Backend:** API REST em Java + Spring Boot (JWT + H2)
+- **Frontend:** React + Vite + Tailwind (identidade Foody)
+
+## Estrutura do repositório
+
+```
+├── pedidos-api/     # Backend Spring Boot
+├── pedidos-web/     # Frontend React
+└── README.md
+```
 
 ## Stack
 
+### Backend
 - Java 17
 - Spring Boot 4.1
 - Spring Security + JWT
 - Spring Data JPA
-- H2 (banco em arquivo)
+- H2 (banco embutido em arquivo — equivalente a SQLite)
 - Maven
+
+### Frontend
+- React 19
+- Vite
+- Tailwind CSS
+- Autenticação via JWT (localStorage)
 
 ## Como subir
 
-Pré-requisitos: **JDK 17+** e Maven Wrapper (já incluso).
+### Pré-requisitos
+- JDK 17+
+- Node.js 18+ (recomendado 20+)
+
+### 1. Backend
 
 ```bash
 cd pedidos-api
 ./mvnw spring-boot:run
 ```
 
-No Windows (PowerShell/Git Bash):
+No Windows:
 
 ```bash
 cd pedidos-api
 ./mvnw.cmd spring-boot:run
 ```
 
-API disponível em: `http://localhost:8080`
+API: `http://localhost:8080`
 
 Console H2 (opcional): `http://localhost:8080/h2-console`
 
@@ -37,9 +59,31 @@ Console H2 (opcional): `http://localhost:8080/h2-console`
 - User: `sa`
 - Password: *(vazio)*
 
-## Autenticação
+### 2. Frontend
 
-Fluxo JWT. Cadastro e login são públicos; demais rotas exigem:
+Em outro terminal:
+
+```bash
+cd pedidos-web
+npm install
+npm run dev
+```
+
+App: `http://localhost:5173`
+
+O front espera a API em `http://localhost:8080` (CORS já liberado).
+
+## Funcionalidades do frontend
+
+1. **Cadastro / Login** — nome, e-mail e senha; token JWT salvo na sessão
+2. **Criar pedido** — cliente, endereço de entrega e itens
+3. **Listar pedidos em andamento** — com status e atualização
+4. **Histórico** — pedidos `ENTREGUE` e `CANCELADO`
+5. Confirmação em modal ao marcar status definitivo (não pode alterar depois)
+
+## API — Autenticação
+
+Cadastro e login são públicos. Demais rotas exigem:
 
 ```
 Authorization: Bearer <token>
@@ -80,7 +124,7 @@ Resposta (ambos):
 }
 ```
 
-## Pedidos
+## API — Pedidos
 
 Todas as rotas abaixo exigem autenticação.
 
@@ -137,16 +181,30 @@ RECEBIDO → EM_PREPARO → SAIU_PARA_ENTREGA → ENTREGUE
 
 `ENTREGUE` e `CANCELADO` são estados finais.
 
-## Estrutura do projeto
+## Estrutura do código
+
+### Backend (`pedidos-api/`)
 
 ```
-pedidos-api/
+src/main/java/.../pedidos_api/
 ├── auth/          # Cadastro e login
 ├── domain/        # Entidades e enum de status
 ├── pedido/        # API de pedidos
 ├── repository/    # Spring Data JPA
 ├── security/      # JWT + SecurityConfig
 └── common/        # Tratamento global de erros
+```
+
+### Frontend (`pedidos-web/`)
+
+```
+src/
+├── api/           # Cliente HTTP
+├── auth/          # Contexto e sessão
+├── components/    # UI reutilizável (pedidos, header, modal)
+├── constants/     # Status do pedido
+├── pages/         # AuthPage, PedidosPage
+└── utils/         # Formatação
 ```
 
 ## Exemplos com cURL
