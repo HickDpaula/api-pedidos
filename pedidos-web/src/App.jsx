@@ -1,11 +1,16 @@
-function App() {
-  return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <h1 className="text-3xl font-bold text-foody-red">
-        Rastreador de Pedidos
-      </h1>
-    </main>
-  )
+import { AuthProvider, useAuth } from './auth/AuthContext'
+import AuthPage from './pages/AuthPage'
+import PedidosPage from './pages/PedidosPage'
+
+function AppContent() {
+  const { isAuthenticated } = useAuth()
+  return isAuthenticated ? <PedidosPage /> : <AuthPage />
 }
 
-export default App
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  )
+}
