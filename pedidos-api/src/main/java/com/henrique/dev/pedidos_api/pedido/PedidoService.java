@@ -83,7 +83,10 @@ public class PedidoService {
 		if (!permitidos.contains(novoStatus)) {
 			throw new ResponseStatusException(
 					HttpStatus.BAD_REQUEST,
-					"Não é permitido alterar o status de " + statusAtual + " para " + novoStatus);
+					"Não é permitido alterar o status de "
+							+ statusAtual.getLabel()
+							+ " para "
+							+ novoStatus.getLabel());
 		}
 
 		pedido.setStatus(novoStatus);
