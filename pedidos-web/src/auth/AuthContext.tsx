@@ -1,14 +1,39 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 import * as authApi from '../api/auth'
+import type {
+  AuthResponse,
+  AuthUser,
+  CadastroCredentials,
+  LoginCredentials,
+} from '../types'
 import { clearSession, getToken, getUser, saveSession } from './storage'
 
-const AuthContext = createContext(null)
+interface AuthContextValue {
+  token: string | null
+  user: AuthUser | null
+  isAuthenticated: boolean
+  login: (credentials: LoginCredentials) => Promise<void>
+  cadastrar: (data: CadastroCredentials) => Promise<void>
+  logout: () => void
+}
 
-export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => getToken())
-  const [user, setUser] = useState(() => getUser())
+const AuthContext = createContext<AuthContextValue | null>(null)
 
-  async function handleAuthSuccess(response) {
+interface AuthProviderProps {
+  children: ReactNode
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
+  const [token, setToken] = useState<string | null>(() => getToken())
+  const [user, setUser] = useState<AuthUser | null>(() => getUser())
+
+  async function handleAuthSuccess(response: AuthResponse) {
     const session = {
       token: response.token,
       id: response.id,
@@ -20,12 +45,12 @@ export function AuthProvider({ children }) {
     setUser({ id: session.id, nome: session.nome, email: session.email })
   }
 
-  async function login(credentials) {
+  async function login(credentials: LoginCredentials) {
     const response = await authApi.login(credentials)
     await handleAuthSuccess(response)
   }
 
-  async function cadastrar(data) {
+  async function cadastrar(data: CadastroCredentials) {
     const response = await authApi.cadastrar(data)
     await handleAuthSuccess(response)
   }
@@ -36,7 +61,7 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
-  const value = useMemo(
+  const value = useMemo<AuthContextValue>(
     () => ({
       token,
       user,

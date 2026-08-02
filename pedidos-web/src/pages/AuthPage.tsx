@@ -1,25 +1,32 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import logoFoody from '../assets/Logo-Foody-retangular-300x100.png'
 import { useAuth } from '../auth/AuthContext'
 import MessageModal from '../components/ui/MessageModal'
 import TextField from '../components/ui/TextField'
+import { ApiError } from '../types'
+
+type AuthMode = 'login' | 'cadastro'
 
 export default function AuthPage() {
   const { login, cadastrar } = useAuth()
-  const [mode, setMode] = useState('login')
+  const [mode, setMode] = useState<AuthMode>('login')
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
-  const [erroModal, setErroModal] = useState({ open: false, title: '', message: '' })
+  const [erroModal, setErroModal] = useState({
+    open: false,
+    title: '',
+    message: '',
+  })
   const [loading, setLoading] = useState(false)
 
   const isLogin = mode === 'login'
 
-  function mostrarErro(title, message) {
+  function mostrarErro(title: string, message: string) {
     setErroModal({ open: true, title, message })
   }
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoading(true)
 
@@ -30,7 +37,10 @@ export default function AuthPage() {
         await cadastrar({ nome, email, senha })
       }
     } catch (error) {
-      const message = error.message || 'Não foi possível autenticar'
+      const message =
+        error instanceof ApiError || error instanceof Error
+          ? error.message
+          : 'Não foi possível autenticar'
       const title = isLogin ? 'Falha no login' : 'Falha no cadastro'
       mostrarErro(title, message)
     } finally {

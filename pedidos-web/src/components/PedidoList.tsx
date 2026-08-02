@@ -1,7 +1,18 @@
 import { useMemo, useState } from 'react'
 import { isStatusAtivo, isStatusFinal } from '../constants/statusPedido'
+import type { Pedido, StatusPedido } from '../types'
 import Alert from './ui/Alert'
 import PedidoCard from './PedidoCard'
+
+type AbaPedidos = 'ativos' | 'historico'
+
+interface PedidoListProps {
+  pedidos: Pedido[]
+  loading: boolean
+  erro: string
+  onRefresh: () => void
+  onStatusChange: (id: number, status: StatusPedido) => void
+}
 
 export default function PedidoList({
   pedidos,
@@ -9,8 +20,8 @@ export default function PedidoList({
   erro,
   onRefresh,
   onStatusChange,
-}) {
-  const [aba, setAba] = useState('ativos')
+}: PedidoListProps) {
+  const [aba, setAba] = useState<AbaPedidos>('ativos')
 
   const pedidosFiltrados = useMemo(() => {
     if (aba === 'historico') {

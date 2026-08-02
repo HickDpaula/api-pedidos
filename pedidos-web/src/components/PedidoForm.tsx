@@ -1,21 +1,35 @@
-import { useState } from 'react'
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { criarPedido } from '../api/pedidos'
 import { useAuth } from '../auth/AuthContext'
+import { ApiError } from '../types'
 import Alert from './ui/Alert'
 import TextField from './ui/TextField'
 
-const ITEM_VAZIO = { nome: '', quantidade: 1 }
+interface ItemForm {
+  nome: string
+  quantidade: number | string
+}
 
-export default function PedidoForm({ onCreated }) {
+const ITEM_VAZIO: ItemForm = { nome: '', quantidade: 1 }
+
+interface PedidoFormProps {
+  onCreated?: () => void
+}
+
+export default function PedidoForm({ onCreated }: PedidoFormProps) {
   const { token } = useAuth()
   const [cliente, setCliente] = useState('')
   const [enderecoEntrega, setEnderecoEntrega] = useState('')
-  const [itens, setItens] = useState([{ ...ITEM_VAZIO }])
+  const [itens, setItens] = useState<ItemForm[]>([{ ...ITEM_VAZIO }])
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [salvando, setSalvando] = useState(false)
 
-  function atualizarItem(index, campo, valor) {
+  function atualizarItem(
+    index: number,
+    campo: keyof ItemForm,
+    valor: string,
+  ) {
     setItens((atual) =>
       atual.map((item, i) => (i === index ? { ...item, [campo]: valor } : item)),
     )
@@ -25,7 +39,7 @@ export default function PedidoForm({ onCreated }) {
     setItens((atual) => [...atual, { ...ITEM_VAZIO }])
   }
 
-  function removerItem(index) {
+  function removerItem(index: number) {
     setItens((atual) =>
       atual.length === 1 ? atual : atual.filter((_, i) => i !== index),
     )
@@ -37,8 +51,10 @@ export default function PedidoForm({ onCreated }) {
     setItens([{ ...ITEM_VAZIO }])
   }
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!token) return
+
     setErro('')
     setSucesso('')
     setSalvando(true)
@@ -57,7 +73,11 @@ export default function PedidoForm({ onCreated }) {
       setSucesso('Pedido criado com sucesso!')
       onCreated?.()
     } catch (error) {
-      setErro(error.message || 'Erro ao criar pedido')
+      const message =
+        error instanceof ApiError || error instanceof Error
+          ? error.message
+          : 'Erro ao criar pedido'
+      setErro(message)
     } finally {
       setSalvando(false)
     }
@@ -75,7 +95,9 @@ export default function PedidoForm({ onCreated }) {
           label="Cliente"
           required
           value={cliente}
-          onChange={(e) => setCliente(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            setCliente(e.target.value)
+          }
           placeholder="Nome do cliente"
         />
 
@@ -83,7 +105,9 @@ export default function PedidoForm({ onCreated }) {
           label="Endereço de entrega"
           required
           value={enderecoEntrega}
-          onChange={(e) => setEnderecoEntrega(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            setEnderecoEntrega(e.target.value)
+          }
           placeholder="Rua, número, bairro"
         />
 

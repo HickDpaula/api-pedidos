@@ -1,4 +1,11 @@
-export default function Alert({ type = 'error', children }) {
+import type { ReactNode } from 'react'
+
+interface AlertProps {
+  type?: 'error' | 'success'
+  children: ReactNode
+}
+
+export default function Alert({ type = 'error', children }: AlertProps) {
   const styles =
     type === 'success'
       ? 'border-emerald-200 bg-emerald-50 text-emerald-700'

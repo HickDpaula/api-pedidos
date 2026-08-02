@@ -1,23 +1,29 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
-export default function ConfirmModal({
+interface MessageModalProps {
+  open: boolean
+  title: string
+  message: string
+  buttonLabel?: string
+  onClose: () => void
+}
+
+export default function MessageModal({
   open,
   title,
   message,
-  confirmLabel = 'Confirmar',
-  cancelLabel = 'Cancelar',
-  onConfirm,
-  onCancel,
-}) {
+  buttonLabel = 'Entendi',
+  onClose,
+}: MessageModalProps) {
   useEffect(() => {
     if (!open) return undefined
 
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
-    function handleEscape(event) {
-      if (event.key === 'Escape') onCancel?.()
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
     }
 
     window.addEventListener('keydown', handleEscape)
@@ -26,7 +32,7 @@ export default function ConfirmModal({
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', handleEscape)
     }
-  }, [open, onCancel])
+  }, [open, onClose])
 
   if (!open) return null
 
@@ -35,13 +41,13 @@ export default function ConfirmModal({
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="confirm-modal-title"
+      aria-labelledby="message-modal-title"
     >
       <button
         type="button"
         aria-label="Fechar"
         className="absolute inset-0 bg-foody-dark/50 backdrop-blur-[2px]"
-        onClick={onCancel}
+        onClick={onClose}
       />
 
       <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl ring-1 ring-black/5">
@@ -50,7 +56,7 @@ export default function ConfirmModal({
         </div>
 
         <h3
-          id="confirm-modal-title"
+          id="message-modal-title"
           className="text-xl font-bold text-foody-dark"
         >
           {title}
@@ -60,20 +66,13 @@ export default function ConfirmModal({
           {message}
         </p>
 
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <div className="mt-8 flex justify-center">
           <button
             type="button"
-            onClick={onCancel}
-            className="min-w-[140px] rounded-xl border border-foody-border px-5 py-3 text-sm font-semibold text-foody-dark transition hover:bg-foody-bg"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
+            onClick={onClose}
             className="min-w-[140px] rounded-xl bg-foody-red px-5 py-3 text-sm font-bold text-white transition hover:bg-foody-red-dark"
           >
-            {confirmLabel}
+            {buttonLabel}
           </button>
         </div>
       </div>

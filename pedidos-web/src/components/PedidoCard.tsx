@@ -1,16 +1,22 @@
-import { useState } from 'react'
+import { useState, type ChangeEvent } from 'react'
 import {
   STATUS_LABELS,
   STATUS_PEDIDO,
   isStatusFinal,
 } from '../constants/statusPedido'
+import type { Pedido, StatusPedido } from '../types'
 import { formatarData } from '../utils/format'
 import ConfirmModal from './ui/ConfirmModal'
 import StatusBadge from './StatusBadge'
 
-export default function PedidoCard({ pedido, onStatusChange }) {
+interface PedidoCardProps {
+  pedido: Pedido
+  onStatusChange: (id: number, status: StatusPedido) => void
+}
+
+export default function PedidoCard({ pedido, onStatusChange }: PedidoCardProps) {
   const final = isStatusFinal(pedido.status)
-  const [pendingStatus, setPendingStatus] = useState(null)
+  const [pendingStatus, setPendingStatus] = useState<StatusPedido | null>(null)
   const [selectKey, setSelectKey] = useState(0)
 
   function resetSelect() {
@@ -18,8 +24,8 @@ export default function PedidoCard({ pedido, onStatusChange }) {
     setSelectKey((atual) => atual + 1)
   }
 
-  function handleStatusChange(event) {
-    const novoStatus = event.target.value
+  function handleStatusChange(event: ChangeEvent<HTMLSelectElement>) {
+    const novoStatus = event.target.value as StatusPedido
 
     if (novoStatus === pedido.status) return
 

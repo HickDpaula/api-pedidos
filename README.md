@@ -5,13 +5,13 @@ Sistema simplificado de rastreamento de pedidos de delivery (desafio técnico Fo
 Monorepo com:
 
 - **Backend:** API REST em Java + Spring Boot (JWT + H2)
-- **Frontend:** React + Vite + Tailwind (identidade Foody)
+- **Frontend:** React + TypeScript + Vite + Tailwind (identidade Foody)
 
 ## Estrutura do repositório
 
 ```
 ├── pedidos-api/     # Backend Spring Boot
-├── pedidos-web/     # Frontend React
+├── pedidos-web/     # Frontend React + TypeScript
 └── README.md
 ```
 
@@ -26,7 +26,7 @@ Monorepo com:
 - Maven
 
 ### Frontend
-- React 19
+- React 19 + TypeScript
 - Vite
 - Tailwind CSS
 - Autenticação via JWT (localStorage)
@@ -204,6 +204,7 @@ src/
 ├── components/    # UI reutilizável (pedidos, header, modal)
 ├── constants/     # Status do pedido
 ├── pages/         # AuthPage, PedidosPage
+├── types/         # Tipagens TypeScript
 └── utils/         # Formatação
 ```
 
