@@ -9,11 +9,21 @@ export async function apiRequest(path, { method = 'GET', body, token } = {}) {
     headers.Authorization = `Bearer ${token}`
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
+  let response
+
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    const error = new Error(
+      'Não foi possível conectar à API. Verifique se o backend está rodando.',
+    )
+    error.status = 0
+    throw error
+  }
 
   const text = await response.text()
   let data = null
@@ -27,10 +37,19 @@ export async function apiRequest(path, { method = 'GET', body, token } = {}) {
   }
 
   if (!response.ok) {
-    const message =
+    let message =
       data?.erro ||
       (data?.campos && Object.values(data.campos).join(', ')) ||
       'Erro na requisição'
+
+    if (
+      response.status === 401 &&
+      path.startsWith('/api/auth/') &&
+      (!data?.erro || message === 'Erro na requisição')
+    ) {
+      message = 'E-mail ou senha inválidos'
+    }
+
     const error = new Error(message)
     error.status = response.status
     error.data = data

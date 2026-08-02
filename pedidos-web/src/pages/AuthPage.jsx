@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import logoFoody from '../assets/Logo-Foody-retangular-300x100.png'
 import { useAuth } from '../auth/AuthContext'
-import Alert from '../components/ui/Alert'
+import MessageModal from '../components/ui/MessageModal'
 import TextField from '../components/ui/TextField'
 
 export default function AuthPage() {
@@ -10,14 +10,17 @@ export default function AuthPage() {
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
-  const [erro, setErro] = useState('')
+  const [erroModal, setErroModal] = useState({ open: false, title: '', message: '' })
   const [loading, setLoading] = useState(false)
 
   const isLogin = mode === 'login'
 
+  function mostrarErro(title, message) {
+    setErroModal({ open: true, title, message })
+  }
+
   async function handleSubmit(event) {
     event.preventDefault()
-    setErro('')
     setLoading(true)
 
     try {
@@ -27,7 +30,9 @@ export default function AuthPage() {
         await cadastrar({ nome, email, senha })
       }
     } catch (error) {
-      setErro(error.message || 'Não foi possível autenticar')
+      const message = error.message || 'Não foi possível autenticar'
+      const title = isLogin ? 'Falha no login' : 'Falha no cadastro'
+      mostrarErro(title, message)
     } finally {
       setLoading(false)
     }
@@ -53,10 +58,7 @@ export default function AuthPage() {
         <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-foody-bg p-1">
           <button
             type="button"
-            onClick={() => {
-              setMode('login')
-              setErro('')
-            }}
+            onClick={() => setMode('login')}
             className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
               isLogin
                 ? 'bg-white text-foody-red shadow-sm'
@@ -67,10 +69,7 @@ export default function AuthPage() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              setMode('cadastro')
-              setErro('')
-            }}
+            onClick={() => setMode('cadastro')}
             className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
               !isLogin
                 ? 'bg-white text-foody-red shadow-sm'
@@ -111,8 +110,6 @@ export default function AuthPage() {
             placeholder="Mínimo 6 caracteres"
           />
 
-          {erro && <Alert type="error">{erro}</Alert>}
-
           <button
             type="submit"
             disabled={loading}
@@ -122,6 +119,13 @@ export default function AuthPage() {
           </button>
         </form>
       </div>
+
+      <MessageModal
+        open={erroModal.open}
+        title={erroModal.title}
+        message={erroModal.message}
+        onClose={() => setErroModal({ open: false, title: '', message: '' })}
+      />
     </div>
   )
 }

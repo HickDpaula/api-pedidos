@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -52,15 +53,19 @@ public class AuthService {
 	}
 
 	public AuthResponse login(LoginRequest request) {
-		Authentication authentication = authenticationManager.authenticate(
-				new UsernamePasswordAuthenticationToken(
-						request.email().toLowerCase().trim(),
-						request.senha()));
+		try {
+			Authentication authentication = authenticationManager.authenticate(
+					new UsernamePasswordAuthenticationToken(
+							request.email().toLowerCase().trim(),
+							request.senha()));
 
-		UsuarioDetails usuarioDetails = (UsuarioDetails) authentication.getPrincipal();
-		Usuario usuario = usuarioDetails.getUsuario();
-		String token = jwtService.gerarToken(usuario.getEmail());
+			UsuarioDetails usuarioDetails = (UsuarioDetails) authentication.getPrincipal();
+			Usuario usuario = usuarioDetails.getUsuario();
+			String token = jwtService.gerarToken(usuario.getEmail());
 
-		return AuthResponse.of(token, usuario.getId(), usuario.getNome(), usuario.getEmail());
+			return AuthResponse.of(token, usuario.getId(), usuario.getNome(), usuario.getEmail());
+		} catch (AuthenticationException ex) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos");
+		}
 	}
 }

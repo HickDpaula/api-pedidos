@@ -1,0 +1,74 @@
+import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
+
+export default function MessageModal({
+  open,
+  title,
+  message,
+  buttonLabel = 'Entendi',
+  onClose,
+}) {
+  useEffect(() => {
+    if (!open) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    function handleEscape(event) {
+      if (event.key === 'Escape') onClose?.()
+    }
+
+    window.addEventListener('keydown', handleEscape)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [open, onClose])
+
+  if (!open) return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="message-modal-title"
+    >
+      <button
+        type="button"
+        aria-label="Fechar"
+        className="absolute inset-0 bg-foody-dark/50 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+
+      <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl ring-1 ring-black/5">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-foody-red/10 text-foody-red">
+          <span className="text-2xl font-bold leading-none">!</span>
+        </div>
+
+        <h3
+          id="message-modal-title"
+          className="text-xl font-bold text-foody-dark"
+        >
+          {title}
+        </h3>
+
+        <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-foody-gray">
+          {message}
+        </p>
+
+        <div className="mt-8 flex justify-center">
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-w-[140px] rounded-xl bg-foody-red px-5 py-3 text-sm font-bold text-white transition hover:bg-foody-red-dark"
+          >
+            {buttonLabel}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
