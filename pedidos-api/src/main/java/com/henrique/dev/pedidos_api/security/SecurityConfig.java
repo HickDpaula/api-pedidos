@@ -1,7 +1,9 @@
 package com.henrique.dev.pedidos_api.security;
 
+import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -27,12 +29,18 @@ public class SecurityConfig {
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 	private final UsuarioDetailsService usuarioDetailsService;
+	private final List<String> allowedOrigins;
 
 	public SecurityConfig(
 			JwtAuthenticationFilter jwtAuthenticationFilter,
-			UsuarioDetailsService usuarioDetailsService) {
+			UsuarioDetailsService usuarioDetailsService,
+			@Value("${app.cors.allowed-origins}") String allowedOrigins) {
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
 		this.usuarioDetailsService = usuarioDetailsService;
+		this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
+				.map(String::trim)
+				.filter(origem -> !origem.isEmpty())
+				.toList();
 	}
 
 	@Bean
@@ -73,7 +81,7 @@ public class SecurityConfig {
 	@Bean
 	CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+		configuration.setAllowedOrigins(allowedOrigins);
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		configuration.setAllowedHeaders(List.of("*"));
 		configuration.setAllowCredentials(true);

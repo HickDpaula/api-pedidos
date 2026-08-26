@@ -1,8 +1,9 @@
-import type { CriarPedidoPayload, Pedido, StatusPedido } from '../types'
+import type { CriarPedidoPayload, PaginaResponse, Pedido, StatusPedido } from '../types'
 import { apiRequest } from './client'
 
-export function listarPedidos(token: string) {
-  return apiRequest<Pedido[]>('/api/pedidos', { token })
+export async function listarPedidos(token: string): Promise<Pedido[]> {
+  const pagina = await apiRequest<PaginaResponse<Pedido>>('/api/pedidos', { token })
+  return pagina.content
 }
 
 export function criarPedido(token: string, payload: CriarPedidoPayload) {

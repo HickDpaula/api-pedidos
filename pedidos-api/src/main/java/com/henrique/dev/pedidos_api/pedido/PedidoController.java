@@ -1,7 +1,9 @@
 package com.henrique.dev.pedidos_api.pedido;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,8 +41,10 @@ public class PedidoController {
 	}
 
 	@GetMapping
-	public List<PedidoResponse> listarTodos(@AuthenticationPrincipal UsuarioDetails usuarioDetails) {
-		return pedidoService.listarTodos(usuarioDetails.getUsuario());
+	public Page<PedidoResponse> listarTodos(
+			@AuthenticationPrincipal UsuarioDetails usuarioDetails,
+			@PageableDefault(size = 50, sort = "criadoEm", direction = Sort.Direction.DESC) Pageable pageable) {
+		return pedidoService.listarTodos(usuarioDetails.getUsuario(), pageable);
 	}
 
 	@GetMapping("/{id}")

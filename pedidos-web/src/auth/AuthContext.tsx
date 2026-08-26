@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useMemo,
   useState,
@@ -33,7 +34,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [token, setToken] = useState<string | null>(() => getToken())
   const [user, setUser] = useState<AuthUser | null>(() => getUser())
 
-  async function handleAuthSuccess(response: AuthResponse) {
+  const handleAuthSuccess = useCallback(async (response: AuthResponse) => {
     const session = {
       token: response.token,
       id: response.id,
@@ -43,23 +44,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
     saveSession(session)
     setToken(session.token)
     setUser({ id: session.id, nome: session.nome, email: session.email })
-  }
+  }, [])
 
-  async function login(credentials: LoginCredentials) {
-    const response = await authApi.login(credentials)
-    await handleAuthSuccess(response)
-  }
+  const login = useCallback(
+    async (credentials: LoginCredentials) => {
+      const response = await authApi.login(credentials)
+      await handleAuthSuccess(response)
+    },
+    [handleAuthSuccess],
+  )
 
-  async function cadastrar(data: CadastroCredentials) {
-    const response = await authApi.cadastrar(data)
-    await handleAuthSuccess(response)
-  }
+  const cadastrar = useCallback(
+    async (data: CadastroCredentials) => {
+      const response = await authApi.cadastrar(data)
+      await handleAuthSuccess(response)
+    },
+    [handleAuthSuccess],
+  )
 
-  function logout() {
+  const logout = useCallback(() => {
+    // Revoga o token no backend em segundo plano; a sessao local e limpa na
+    // hora independente do resultado, pra logout nunca travar por causa de rede.
+    if (token) {
+      authApi.logout(token).catch(() => {})
+    }
     clearSession()
     setToken(null)
     setUser(null)
-  }
+  }, [token])
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -70,7 +82,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       cadastrar,
       logout,
     }),
-    [token, user],
+    [token, user, login, cadastrar, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

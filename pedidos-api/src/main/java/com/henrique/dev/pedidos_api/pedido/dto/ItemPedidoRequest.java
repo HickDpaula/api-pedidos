@@ -3,9 +3,11 @@ package com.henrique.dev.pedidos_api.pedido.dto;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public record ItemPedidoRequest(
 		@NotBlank(message = "Nome do item é obrigatório")
+		@Size(max = 150, message = "Nome do item deve ter no máximo 150 caracteres")
 		String nome,
 
 		@NotNull(message = "Quantidade é obrigatória")

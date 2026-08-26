@@ -24,6 +24,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -142,6 +146,19 @@ class PedidoServiceTest {
 				.isInstanceOf(ResponseStatusException.class)
 				.extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
 				.isEqualTo(HttpStatus.NOT_FOUND);
+	}
+
+	@Test
+	void deveListarApenasPedidosDoUsuarioLogadoPaginados() {
+		Pedido pedido = criarPedido(1L, StatusPedido.RECEBIDO, usuarioLogado);
+		Pageable pageable = PageRequest.of(0, 50);
+		Page<Pedido> pagina = new PageImpl<>(List.of(pedido), pageable, 1);
+		when(pedidoRepository.findByUsuario(usuarioLogado, pageable)).thenReturn(pagina);
+
+		Page<PedidoResponse> resultado = pedidoService.listarTodos(usuarioLogado, pageable);
+
+		assertThat(resultado.getTotalElements()).isEqualTo(1);
+		assertThat(resultado.getContent()).extracting(PedidoResponse::id).containsExactly(1L);
 	}
 
 	@Test

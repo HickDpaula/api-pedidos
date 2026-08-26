@@ -20,6 +20,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -36,6 +40,7 @@ import com.henrique.dev.pedidos_api.pedido.dto.ItemPedidoResponse;
 import com.henrique.dev.pedidos_api.pedido.dto.PedidoResponse;
 import com.henrique.dev.pedidos_api.security.JwtService;
 import com.henrique.dev.pedidos_api.security.SecurityConfig;
+import com.henrique.dev.pedidos_api.security.TokenBlacklistService;
 import com.henrique.dev.pedidos_api.security.UsuarioDetails;
 import com.henrique.dev.pedidos_api.security.UsuarioDetailsService;
 
@@ -64,6 +69,9 @@ class PedidoControllerTest {
 
 	@MockitoBean
 	private UsuarioDetailsService usuarioDetailsService;
+
+	@MockitoBean
+	private TokenBlacklistService tokenBlacklistService;
 
 	@BeforeEach
 	void autenticar() {
@@ -99,17 +107,20 @@ class PedidoControllerTest {
 
 	@Test
 	void listarComTokenDeveRetornar200() throws Exception {
-		when(pedidoService.listarTodos(any(Usuario.class))).thenReturn(List.of(pedidoResponseExemplo()));
+		Page<PedidoResponse> pagina = new PageImpl<>(List.of(pedidoResponseExemplo()), PageRequest.of(0, 50), 1);
+		when(pedidoService.listarTodos(any(Usuario.class), any(Pageable.class))).thenReturn(pagina);
 
 		mockMvc.perform(get("/api/pedidos").header("Authorization", "Bearer " + TOKEN))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$", hasSize(1)))
-				.andExpect(jsonPath("$[0].cliente").value("Maria Silva"));
+				.andExpect(jsonPath("$.content", hasSize(1)))
+				.andExpect(jsonPath("$.content[0].cliente").value("Maria Silva"))
+				.andExpect(jsonPath("$.page.totalElements").value(1));
 	}
 
 	@Test
 	void erroInesperadoDoServiceDeveRetornar500ComCorpoPadronizado() throws Exception {
-		when(pedidoService.listarTodos(any(Usuario.class))).thenThrow(new RuntimeException("boom, detalhe interno sensivel"));
+		when(pedidoService.listarTodos(any(Usuario.class), any(Pageable.class)))
+				.thenThrow(new RuntimeException("boom, detalhe interno sensivel"));
 
 		mockMvc.perform(get("/api/pedidos").header("Authorization", "Bearer " + TOKEN))
 				.andExpect(status().isInternalServerError())
@@ -149,6 +160,44 @@ class PedidoControllerTest {
 						.content(objectMapper.writeValueAsString(request)))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.campos.itens").exists());
+	}
+
+	@Test
+	void criarComClienteMuitoLongoDeveRetornar400() throws Exception {
+		CriarPedidoRequest request = new CriarPedidoRequest(
+				"A".repeat(151), "Rua A, 10", List.of(new ItemPedidoRequest("Pizza", 1)));
+
+		mockMvc.perform(post("/api/pedidos")
+						.header("Authorization", "Bearer " + TOKEN)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.campos.cliente").exists());
+	}
+
+	@Test
+	void criarComEnderecoMuitoLongoDeveRetornar400() throws Exception {
+		CriarPedidoRequest request = new CriarPedidoRequest(
+				"Maria", "A".repeat(256), List.of(new ItemPedidoRequest("Pizza", 1)));
+
+		mockMvc.perform(post("/api/pedidos")
+						.header("Authorization", "Bearer " + TOKEN)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.campos.enderecoEntrega").exists());
+	}
+
+	@Test
+	void criarComNomeDeItemMuitoLongoDeveRetornar400() throws Exception {
+		CriarPedidoRequest request = new CriarPedidoRequest(
+				"Maria", "Rua A, 10", List.of(new ItemPedidoRequest("A".repeat(151), 1)));
+
+		mockMvc.perform(post("/api/pedidos")
+						.header("Authorization", "Bearer " + TOKEN)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request)))
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test

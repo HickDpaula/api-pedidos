@@ -41,6 +41,10 @@ public class JwtService {
 		return extrairClaims(token).getSubject();
 	}
 
+	public Date extrairExpiracao(String token) {
+		return extrairClaims(token).getExpiration();
+	}
+
 	public boolean tokenValido(String token) {
 		try {
 			Claims claims = extrairClaims(token);

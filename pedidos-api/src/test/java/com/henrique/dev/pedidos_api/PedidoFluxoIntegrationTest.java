@@ -2,6 +2,9 @@ package com.henrique.dev.pedidos_api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -67,12 +70,7 @@ class PedidoFluxoIntegrationTest {
 		Long pedidoId = criado.getBody().id();
 		assertThat(pedidoId).isNotNull();
 
-		ResponseEntity<PedidoResponse[]> listagem = restTemplate.exchange(
-				urlBase() + "/api/pedidos",
-				HttpMethod.GET,
-				new HttpEntity<>(headers),
-				PedidoResponse[].class);
-		assertThat(listagem.getBody()).extracting(PedidoResponse::id).contains(pedidoId);
+		assertThat(listarIds(headers)).contains(pedidoId);
 
 		avancarStatus(pedidoId, headers, StatusPedido.EM_PREPARO, HttpStatus.OK);
 		avancarStatus(pedidoId, headers, StatusPedido.SAIU_PARA_ENTREGA, HttpStatus.OK);
@@ -113,12 +111,7 @@ class PedidoFluxoIntegrationTest {
 				String.class);
 		assertThat(buscaCruzada.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 
-		ResponseEntity<PedidoResponse[]> listagemDoUsuarioB = restTemplate.exchange(
-				urlBase() + "/api/pedidos",
-				HttpMethod.GET,
-				new HttpEntity<>(headersB),
-				PedidoResponse[].class);
-		assertThat(listagemDoUsuarioB.getBody()).extracting(PedidoResponse::id).doesNotContain(pedidoDoUsuarioA);
+		assertThat(listarIds(headersB)).doesNotContain(pedidoDoUsuarioA);
 
 		ResponseEntity<String> statusCruzado = restTemplate.exchange(
 				urlBase() + "/api/pedidos/" + pedidoDoUsuarioA + "/status",
@@ -126,6 +119,42 @@ class PedidoFluxoIntegrationTest {
 				new HttpEntity<>(new AtualizarStatusRequest(StatusPedido.EM_PREPARO), headersB),
 				String.class);
 		assertThat(statusCruzado.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+	}
+
+	@Test
+	void tokenDeveSerRejeitadoAposLogout() {
+		String token = cadastrarERetornarToken("logout");
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBearerAuth(token);
+
+		ResponseEntity<Void> logout = restTemplate.exchange(
+				urlBase() + "/api/auth/logout",
+				HttpMethod.POST,
+				new HttpEntity<>(headers),
+				Void.class);
+		assertThat(logout.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+		// Mesmo token, mesma pilha de seguranca do usuario anonimo -> 403.
+		ResponseEntity<String> aposLogout = restTemplate.exchange(
+				urlBase() + "/api/pedidos",
+				HttpMethod.GET,
+				new HttpEntity<>(headers),
+				String.class);
+		assertThat(aposLogout.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+	}
+
+	@SuppressWarnings("unchecked")
+	private List<Long> listarIds(HttpHeaders headers) {
+		// GET /api/pedidos retorna uma Page (paginacao) — desserializa como Map
+		// generico e extrai "content" pra nao depender de um record espelhando
+		// todos os campos que o Spring Data injeta no JSON de paginacao.
+		ResponseEntity<Map> resposta = restTemplate.exchange(
+				urlBase() + "/api/pedidos",
+				HttpMethod.GET,
+				new HttpEntity<>(headers),
+				Map.class);
+		List<Map<String, Object>> content = (List<Map<String, Object>>) resposta.getBody().get("content");
+		return content.stream().map(item -> ((Number) item.get("id")).longValue()).toList();
 	}
 
 	private String cadastrarERetornarToken(String prefixo) {

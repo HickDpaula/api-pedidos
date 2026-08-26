@@ -14,3 +14,10 @@ export function login(credentials: LoginCredentials) {
     body: credentials,
   })
 }
+
+export function logout(token: string) {
+  return apiRequest<void>('/api/auth/logout', {
+    method: 'POST',
+    token,
+  })
+}

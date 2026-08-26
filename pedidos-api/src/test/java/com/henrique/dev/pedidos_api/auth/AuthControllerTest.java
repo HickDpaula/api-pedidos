@@ -1,6 +1,7 @@
 package com.henrique.dev.pedidos_api.auth;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,6 +23,7 @@ import com.henrique.dev.pedidos_api.auth.dto.CadastroRequest;
 import com.henrique.dev.pedidos_api.auth.dto.LoginRequest;
 import com.henrique.dev.pedidos_api.security.JwtService;
 import com.henrique.dev.pedidos_api.security.SecurityConfig;
+import com.henrique.dev.pedidos_api.security.TokenBlacklistService;
 import com.henrique.dev.pedidos_api.security.UsuarioDetailsService;
 
 /**
@@ -47,6 +49,9 @@ class AuthControllerTest {
 
 	@MockitoBean
 	private UsuarioDetailsService usuarioDetailsService;
+
+	@MockitoBean
+	private TokenBlacklistService tokenBlacklistService;
 
 	@Test
 	void cadastroComNomeEmBrancoDeveRetornar400() throws Exception {
@@ -130,5 +135,25 @@ class AuthControllerTest {
 						.content(objectMapper.writeValueAsString(request)))
 				.andExpect(status().isUnauthorized())
 				.andExpect(jsonPath("$.erro").value("E-mail ou senha inválidos"));
+	}
+
+	@Test
+	void loginComMuitasTentativasDeveRetornar429() throws Exception {
+		LoginRequest request = new LoginRequest("henrique@email.com", "senha-errada");
+		when(authService.login(any(LoginRequest.class)))
+				.thenThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Muitas tentativas de login. Tente novamente em alguns minutos."));
+
+		mockMvc.perform(post("/api/auth/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request)))
+				.andExpect(status().isTooManyRequests());
+	}
+
+	@Test
+	void logoutComTokenDeveRetornar204EChamarAuthService() throws Exception {
+		mockMvc.perform(post("/api/auth/logout").header("Authorization", "Bearer token-valido"))
+				.andExpect(status().isNoContent());
+
+		verify(authService).logout("token-valido");
 	}
 }

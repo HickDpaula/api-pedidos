@@ -20,10 +20,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	private final JwtService jwtService;
 	private final UsuarioDetailsService usuarioDetailsService;
+	private final TokenBlacklistService tokenBlacklistService;
 
-	public JwtAuthenticationFilter(JwtService jwtService, UsuarioDetailsService usuarioDetailsService) {
+	public JwtAuthenticationFilter(
+			JwtService jwtService,
+			UsuarioDetailsService usuarioDetailsService,
+			TokenBlacklistService tokenBlacklistService) {
 		this.jwtService = jwtService;
 		this.usuarioDetailsService = usuarioDetailsService;
+		this.tokenBlacklistService = tokenBlacklistService;
 	}
 
 	@Override
@@ -41,7 +46,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 		String token = authHeader.substring(7);
 
-		if (jwtService.tokenValido(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
+		if (jwtService.tokenValido(token)
+				&& !tokenBlacklistService.estaRevogado(token)
+				&& SecurityContextHolder.getContext().getAuthentication() == null) {
 			String email = jwtService.extrairEmail(token);
 			UserDetails userDetails = usuarioDetailsService.loadUserByUsername(email);
 

@@ -3,9 +3,13 @@ package com.henrique.dev.pedidos_api.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.Date;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +29,8 @@ import com.henrique.dev.pedidos_api.auth.dto.LoginRequest;
 import com.henrique.dev.pedidos_api.domain.Usuario;
 import com.henrique.dev.pedidos_api.repository.UsuarioRepository;
 import com.henrique.dev.pedidos_api.security.JwtService;
+import com.henrique.dev.pedidos_api.security.LoginRateLimiter;
+import com.henrique.dev.pedidos_api.security.TokenBlacklistService;
 import com.henrique.dev.pedidos_api.security.UsuarioDetails;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,6 +47,12 @@ class AuthServiceTest {
 
 	@Mock
 	private AuthenticationManager authenticationManager;
+
+	@Mock
+	private LoginRateLimiter loginRateLimiter;
+
+	@Mock
+	private TokenBlacklistService tokenBlacklistService;
 
 	@InjectMocks
 	private AuthService authService;
@@ -117,6 +129,8 @@ class AuthServiceTest {
 		assertThat(response.token()).isEqualTo("token-gerado");
 		assertThat(response.id()).isEqualTo(1L);
 		assertThat(response.email()).isEqualTo("henrique@email.com");
+
+		verify(loginRateLimiter).registrarSucesso("henrique@email.com");
 	}
 
 	@Test
@@ -128,5 +142,31 @@ class AuthServiceTest {
 				.isInstanceOf(ResponseStatusException.class)
 				.extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
 				.isEqualTo(HttpStatus.UNAUTHORIZED);
+
+		verify(loginRateLimiter).registrarFalha("henrique@email.com");
+	}
+
+	@Test
+	void deveBloquearLoginQuandoLimiteDeTentativasExcedido() {
+		LoginRequest request = new LoginRequest("henrique@email.com", "123456");
+		doThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Muitas tentativas"))
+				.when(loginRateLimiter).verificarLimite("henrique@email.com");
+
+		assertThatThrownBy(() -> authService.login(request))
+				.isInstanceOf(ResponseStatusException.class)
+				.extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+				.isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+
+		verify(authenticationManager, never()).authenticate(any());
+	}
+
+	@Test
+	void deveRevogarTokenNoLogout() {
+		Date expiracao = new Date(System.currentTimeMillis() + 60_000);
+		when(jwtService.extrairExpiracao("token-a-revogar")).thenReturn(expiracao);
+
+		authService.logout("token-a-revogar");
+
+		verify(tokenBlacklistService).revogar("token-a-revogar", expiracao);
 	}
 }

@@ -2,10 +2,11 @@ package com.henrique.dev.pedidos_api.pedido;
 
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,10 +61,8 @@ public class PedidoService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<PedidoResponse> listarTodos(Usuario usuario) {
-		return pedidoRepository.findByUsuario(usuario).stream()
-				.map(PedidoResponse::from)
-				.toList();
+	public Page<PedidoResponse> listarTodos(Usuario usuario, Pageable pageable) {
+		return pedidoRepository.findByUsuario(usuario, pageable).map(PedidoResponse::from);
 	}
 
 	@Transactional(readOnly = true)
