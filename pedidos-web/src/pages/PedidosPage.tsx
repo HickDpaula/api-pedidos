@@ -32,6 +32,7 @@ export default function PedidosPage() {
   }, [token])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- carregamento inicial na montagem; sem lib de data-fetching no projeto
     void carregarPedidos()
   }, [carregarPedidos])
 
