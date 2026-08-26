@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
@@ -63,6 +64,27 @@ class AuthServiceTest {
 		assertThat(response.email()).isEqualTo("henrique@email.com");
 		assertThat(response.nome()).isEqualTo("Henrique");
 		assertThat(response.tipo()).isEqualTo("Bearer");
+	}
+
+	@Test
+	void deveNormalizarEmailAntesDeChecarDuplicidade() {
+		// Regressao: existsByEmail() era chamado com o valor cru do request, mas o
+		// e-mail e salvo em minusculas — "Henrique@Email.com" passava pela checagem
+		// como se fosse diferente de um "henrique@email.com" ja cadastrado.
+		CadastroRequest request = new CadastroRequest("Henrique", "Henrique@Email.com", "123456");
+
+		when(usuarioRepository.existsByEmail("henrique@email.com")).thenReturn(false);
+		when(passwordEncoder.encode("123456")).thenReturn("hash");
+		when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> {
+			Usuario usuario = invocation.getArgument(0);
+			usuario.setId(1L);
+			return usuario;
+		});
+		when(jwtService.gerarToken("henrique@email.com")).thenReturn("token-gerado");
+
+		authService.cadastrar(request);
+
+		verify(usuarioRepository).existsByEmail("henrique@email.com");
 	}
 
 	@Test

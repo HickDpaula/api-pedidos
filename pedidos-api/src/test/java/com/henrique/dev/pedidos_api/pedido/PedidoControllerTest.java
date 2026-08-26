@@ -1,6 +1,8 @@
 package com.henrique.dev.pedidos_api.pedido;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -97,7 +99,7 @@ class PedidoControllerTest {
 
 	@Test
 	void listarComTokenDeveRetornar200() throws Exception {
-		when(pedidoService.listarTodos()).thenReturn(List.of(pedidoResponseExemplo()));
+		when(pedidoService.listarTodos(any(Usuario.class))).thenReturn(List.of(pedidoResponseExemplo()));
 
 		mockMvc.perform(get("/api/pedidos").header("Authorization", "Bearer " + TOKEN))
 				.andExpect(status().isOk())
@@ -106,8 +108,18 @@ class PedidoControllerTest {
 	}
 
 	@Test
+	void erroInesperadoDoServiceDeveRetornar500ComCorpoPadronizado() throws Exception {
+		when(pedidoService.listarTodos(any(Usuario.class))).thenThrow(new RuntimeException("boom, detalhe interno sensivel"));
+
+		mockMvc.perform(get("/api/pedidos").header("Authorization", "Bearer " + TOKEN))
+				.andExpect(status().isInternalServerError())
+				.andExpect(jsonPath("$.erro").value("Erro interno no servidor"))
+				.andExpect(jsonPath("$.erro", not(containsString("detalhe interno sensivel"))));
+	}
+
+	@Test
 	void buscarPorIdInexistenteDeveRetornar404() throws Exception {
-		when(pedidoService.buscarPorId(99L))
+		when(pedidoService.buscarPorId(eq(99L), any(Usuario.class)))
 				.thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido não encontrado"));
 
 		mockMvc.perform(get("/api/pedidos/99").header("Authorization", "Bearer " + TOKEN))
@@ -153,7 +165,7 @@ class PedidoControllerTest {
 	@Test
 	void criarComDadosValidosDeveRetornar201() throws Exception {
 		CriarPedidoRequest request = new CriarPedidoRequest("Maria", "Rua A, 10", List.of(new ItemPedidoRequest("Pizza", 1)));
-		when(pedidoService.criar(any(CriarPedidoRequest.class))).thenReturn(pedidoResponseExemplo());
+		when(pedidoService.criar(any(CriarPedidoRequest.class), any(Usuario.class))).thenReturn(pedidoResponseExemplo());
 
 		mockMvc.perform(post("/api/pedidos")
 						.header("Authorization", "Bearer " + TOKEN)
@@ -175,7 +187,7 @@ class PedidoControllerTest {
 
 	@Test
 	void atualizarStatusComTransicaoInvalidaDeveRetornar400() throws Exception {
-		when(pedidoService.atualizarStatus(eq(1L), any(AtualizarStatusRequest.class)))
+		when(pedidoService.atualizarStatus(eq(1L), any(Usuario.class), any(AtualizarStatusRequest.class)))
 				.thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é permitido alterar o status"));
 
 		mockMvc.perform(put("/api/pedidos/1/status")
@@ -189,7 +201,7 @@ class PedidoControllerTest {
 	void atualizarStatusValidoDeveRetornar200() throws Exception {
 		PedidoResponse atualizado = new PedidoResponse(1L, "Maria Silva", "Rua das Flores, 100", StatusPedido.EM_PREPARO,
 				List.of(), LocalDateTime.now());
-		when(pedidoService.atualizarStatus(eq(1L), any(AtualizarStatusRequest.class))).thenReturn(atualizado);
+		when(pedidoService.atualizarStatus(eq(1L), any(Usuario.class), any(AtualizarStatusRequest.class))).thenReturn(atualizado);
 
 		mockMvc.perform(put("/api/pedidos/1/status")
 						.header("Authorization", "Bearer " + TOKEN)

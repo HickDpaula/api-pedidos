@@ -47,15 +47,7 @@ class PedidoFluxoIntegrationTest {
 
 	@Test
 	void fluxoCompletoDeCadastroLoginECicloDeVidaDoPedido() {
-		String email = "henrique+" + System.nanoTime() + "@email.com";
-
-		ResponseEntity<AuthResponse> cadastro = restTemplate.postForEntity(
-				urlBase() + "/api/auth/cadastro",
-				new CadastroRequest("Henrique", email, "123456"),
-				AuthResponse.class);
-		assertThat(cadastro.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-		String token = cadastro.getBody().token();
-		assertThat(token).isNotBlank();
+		String token = cadastrarERetornarToken("henrique");
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(token);
@@ -91,6 +83,62 @@ class PedidoFluxoIntegrationTest {
 		// Usuario anonimo (padrao do Spring Security) -> AccessDeniedException -> 403.
 		ResponseEntity<String> semToken = restTemplate.getForEntity(urlBase() + "/api/pedidos", String.class);
 		assertThat(semToken.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+	}
+
+	@Test
+	void usuarioNaoDeveVerNemAlterarPedidoDeOutroUsuario() {
+		String tokenUsuarioA = cadastrarERetornarToken("usuario-a");
+		HttpHeaders headersA = new HttpHeaders();
+		headersA.setBearerAuth(tokenUsuarioA);
+
+		CriarPedidoRequest criarPedidoRequest = new CriarPedidoRequest(
+				"Cliente do Usuario A",
+				"Rua A, 1",
+				java.util.List.of(new ItemPedidoRequest("Item", 1)));
+		ResponseEntity<PedidoResponse> criado = restTemplate.exchange(
+				urlBase() + "/api/pedidos",
+				HttpMethod.POST,
+				new HttpEntity<>(criarPedidoRequest, headersA),
+				PedidoResponse.class);
+		Long pedidoDoUsuarioA = criado.getBody().id();
+
+		String tokenUsuarioB = cadastrarERetornarToken("usuario-b");
+		HttpHeaders headersB = new HttpHeaders();
+		headersB.setBearerAuth(tokenUsuarioB);
+
+		ResponseEntity<String> buscaCruzada = restTemplate.exchange(
+				urlBase() + "/api/pedidos/" + pedidoDoUsuarioA,
+				HttpMethod.GET,
+				new HttpEntity<>(headersB),
+				String.class);
+		assertThat(buscaCruzada.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+		ResponseEntity<PedidoResponse[]> listagemDoUsuarioB = restTemplate.exchange(
+				urlBase() + "/api/pedidos",
+				HttpMethod.GET,
+				new HttpEntity<>(headersB),
+				PedidoResponse[].class);
+		assertThat(listagemDoUsuarioB.getBody()).extracting(PedidoResponse::id).doesNotContain(pedidoDoUsuarioA);
+
+		ResponseEntity<String> statusCruzado = restTemplate.exchange(
+				urlBase() + "/api/pedidos/" + pedidoDoUsuarioA + "/status",
+				HttpMethod.PUT,
+				new HttpEntity<>(new AtualizarStatusRequest(StatusPedido.EM_PREPARO), headersB),
+				String.class);
+		assertThat(statusCruzado.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+	}
+
+	private String cadastrarERetornarToken(String prefixo) {
+		String email = prefixo + "+" + System.nanoTime() + "@email.com";
+
+		ResponseEntity<AuthResponse> cadastro = restTemplate.postForEntity(
+				urlBase() + "/api/auth/cadastro",
+				new CadastroRequest("Usuario Teste", email, "123456"),
+				AuthResponse.class);
+		assertThat(cadastro.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+		String token = cadastro.getBody().token();
+		assertThat(token).isNotBlank();
+		return token;
 	}
 
 	private void avancarStatus(Long pedidoId, HttpHeaders headers, StatusPedido novoStatus, HttpStatus statusEsperado) {

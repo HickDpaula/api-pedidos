@@ -37,13 +37,14 @@ public class AuthService {
 	}
 
 	public AuthResponse cadastrar(CadastroRequest request) {
-		if (usuarioRepository.existsByEmail(request.email())) {
+		String email = request.email().toLowerCase().trim();
+		if (usuarioRepository.existsByEmail(email)) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
 		}
 
 		Usuario usuario = new Usuario();
 		usuario.setNome(request.nome());
-		usuario.setEmail(request.email().toLowerCase().trim());
+		usuario.setEmail(email);
 		usuario.setSenha(passwordEncoder.encode(request.senha()));
 
 		Usuario salvo = usuarioRepository.save(usuario);

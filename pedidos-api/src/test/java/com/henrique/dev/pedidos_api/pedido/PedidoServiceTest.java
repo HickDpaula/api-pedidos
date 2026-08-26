@@ -3,6 +3,7 @@ package com.henrique.dev.pedidos_api.pedido;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.henrique.dev.pedidos_api.domain.Pedido;
 import com.henrique.dev.pedidos_api.domain.StatusPedido;
+import com.henrique.dev.pedidos_api.domain.Usuario;
 import com.henrique.dev.pedidos_api.pedido.dto.AtualizarStatusRequest;
 import com.henrique.dev.pedidos_api.pedido.dto.CriarPedidoRequest;
 import com.henrique.dev.pedidos_api.pedido.dto.ItemPedidoRequest;
@@ -58,6 +60,8 @@ class PedidoServiceTest {
 	@InjectMocks
 	private PedidoService pedidoService;
 
+	private final Usuario usuarioLogado = criarUsuario(1L);
+
 	private static Stream<Arguments> transicoesValidas() {
 		return TRANSICOES_VALIDAS.entrySet().stream()
 				.flatMap(entry -> entry.getValue().stream()
@@ -75,10 +79,10 @@ class PedidoServiceTest {
 	@ParameterizedTest(name = "{0} -> {1} deve ser permitido")
 	@MethodSource("transicoesValidas")
 	void devePermitirTransicaoValida(StatusPedido origem, StatusPedido destino) {
-		Pedido pedido = criarPedido(1L, origem);
-		when(pedidoRepository.findById(1L)).thenReturn(Optional.of(pedido));
+		Pedido pedido = criarPedido(1L, origem, usuarioLogado);
+		when(pedidoRepository.findByIdAndUsuario(1L, usuarioLogado)).thenReturn(Optional.of(pedido));
 
-		PedidoResponse response = pedidoService.atualizarStatus(1L, new AtualizarStatusRequest(destino));
+		PedidoResponse response = pedidoService.atualizarStatus(1L, usuarioLogado, new AtualizarStatusRequest(destino));
 
 		assertThat(response.status()).isEqualTo(destino);
 	}
@@ -86,10 +90,10 @@ class PedidoServiceTest {
 	@ParameterizedTest(name = "{0} -> {1} deve ser rejeitado")
 	@MethodSource("transicoesInvalidas")
 	void naoDevePermitirTransicaoInvalida(StatusPedido origem, StatusPedido destino) {
-		Pedido pedido = criarPedido(1L, origem);
-		when(pedidoRepository.findById(1L)).thenReturn(Optional.of(pedido));
+		Pedido pedido = criarPedido(1L, origem, usuarioLogado);
+		when(pedidoRepository.findByIdAndUsuario(1L, usuarioLogado)).thenReturn(Optional.of(pedido));
 
-		assertThatThrownBy(() -> pedidoService.atualizarStatus(1L, new AtualizarStatusRequest(destino)))
+		assertThatThrownBy(() -> pedidoService.atualizarStatus(1L, usuarioLogado, new AtualizarStatusRequest(destino)))
 				.isInstanceOf(ResponseStatusException.class)
 				.extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
 				.isEqualTo(HttpStatus.BAD_REQUEST);
@@ -97,19 +101,21 @@ class PedidoServiceTest {
 
 	@Test
 	void atualizarParaMesmoStatusDeveSerNoOp() {
-		Pedido pedido = criarPedido(1L, StatusPedido.EM_PREPARO);
-		when(pedidoRepository.findById(1L)).thenReturn(Optional.of(pedido));
+		Pedido pedido = criarPedido(1L, StatusPedido.EM_PREPARO, usuarioLogado);
+		when(pedidoRepository.findByIdAndUsuario(1L, usuarioLogado)).thenReturn(Optional.of(pedido));
 
-		PedidoResponse response = pedidoService.atualizarStatus(1L, new AtualizarStatusRequest(StatusPedido.EM_PREPARO));
+		PedidoResponse response = pedidoService.atualizarStatus(
+				1L, usuarioLogado, new AtualizarStatusRequest(StatusPedido.EM_PREPARO));
 
 		assertThat(response.status()).isEqualTo(StatusPedido.EM_PREPARO);
 	}
 
 	@Test
 	void deveLancar404AoAtualizarStatusDePedidoInexistente() {
-		when(pedidoRepository.findById(99L)).thenReturn(Optional.empty());
+		when(pedidoRepository.findByIdAndUsuario(99L, usuarioLogado)).thenReturn(Optional.empty());
 
-		assertThatThrownBy(() -> pedidoService.atualizarStatus(99L, new AtualizarStatusRequest(StatusPedido.EM_PREPARO)))
+		assertThatThrownBy(() -> pedidoService.atualizarStatus(
+				99L, usuarioLogado, new AtualizarStatusRequest(StatusPedido.EM_PREPARO)))
 				.isInstanceOf(ResponseStatusException.class)
 				.extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
 				.isEqualTo(HttpStatus.NOT_FOUND);
@@ -117,16 +123,29 @@ class PedidoServiceTest {
 
 	@Test
 	void deveLancar404AoBuscarPedidoInexistente() {
-		when(pedidoRepository.findById(99L)).thenReturn(Optional.empty());
+		when(pedidoRepository.findByIdAndUsuario(99L, usuarioLogado)).thenReturn(Optional.empty());
 
-		assertThatThrownBy(() -> pedidoService.buscarPorId(99L))
+		assertThatThrownBy(() -> pedidoService.buscarPorId(99L, usuarioLogado))
 				.isInstanceOf(ResponseStatusException.class)
 				.extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
 				.isEqualTo(HttpStatus.NOT_FOUND);
 	}
 
 	@Test
-	void deveCriarPedidoComStatusRecebidoEItensAssociados() {
+	void deveLancar404AoBuscarPedidoDeOutroUsuario() {
+		// Regressao do escopo por usuario: pedido existe, mas e de outra pessoa —
+		// deve dar 404 (nao 403), pra nao confirmar pra quem pergunta que o ID existe.
+		Usuario outroUsuario = criarUsuario(2L);
+		when(pedidoRepository.findByIdAndUsuario(5L, outroUsuario)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> pedidoService.buscarPorId(5L, outroUsuario))
+				.isInstanceOf(ResponseStatusException.class)
+				.extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+				.isEqualTo(HttpStatus.NOT_FOUND);
+	}
+
+	@Test
+	void deveCriarPedidoComStatusRecebidoEItensAssociadosAoUsuarioLogado() {
 		when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocation -> {
 			Pedido pedido = invocation.getArgument(0);
 			pedido.setId(10L);
@@ -138,21 +157,32 @@ class PedidoServiceTest {
 				"  Rua das Flores, 100  ",
 				List.of(new ItemPedidoRequest("X-Burger", 2)));
 
-		PedidoResponse response = pedidoService.criar(request);
+		PedidoResponse response = pedidoService.criar(request, usuarioLogado);
 
 		assertThat(response.cliente()).isEqualTo("Maria Silva");
 		assertThat(response.enderecoEntrega()).isEqualTo("Rua das Flores, 100");
 		assertThat(response.status()).isEqualTo(StatusPedido.RECEBIDO);
 		assertThat(response.itens()).hasSize(1);
-		verify(pedidoRepository).save(any(Pedido.class));
+
+		verify(pedidoRepository).save(argThat(pedido -> pedido.getUsuario() == usuarioLogado));
 	}
 
-	private Pedido criarPedido(Long id, StatusPedido status) {
+	private Pedido criarPedido(Long id, StatusPedido status, Usuario usuario) {
 		Pedido pedido = new Pedido();
 		pedido.setId(id);
 		pedido.setCliente("Cliente Teste");
 		pedido.setEnderecoEntrega("Endereco Teste");
+		pedido.setUsuario(usuario);
 		pedido.setStatus(status);
 		return pedido;
+	}
+
+	private Usuario criarUsuario(Long id) {
+		Usuario usuario = new Usuario();
+		usuario.setId(id);
+		usuario.setNome("Usuario " + id);
+		usuario.setEmail("usuario" + id + "@email.com");
+		usuario.setSenha("hash");
+		return usuario;
 	}
 }

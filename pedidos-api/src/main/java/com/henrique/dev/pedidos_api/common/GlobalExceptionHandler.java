@@ -4,6 +4,9 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
@@ -15,6 +18,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
@@ -50,5 +55,29 @@ public class GlobalExceptionHandler {
 		body.put("erro", ex.getReason());
 
 		return ResponseEntity.status(ex.getStatusCode()).body(body);
+	}
+
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity<Map<String, Object>> handleIntegrityViolation(DataIntegrityViolationException ex) {
+		log.warn("Violacao de integridade de dados", ex);
+
+		Map<String, Object> body = new HashMap<>();
+		body.put("timestamp", Instant.now());
+		body.put("status", HttpStatus.CONFLICT.value());
+		body.put("erro", "Conflito ao salvar os dados");
+
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+	}
+
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
+		log.error("Erro nao tratado", ex);
+
+		Map<String, Object> body = new HashMap<>();
+		body.put("timestamp", Instant.now());
+		body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
+		body.put("erro", "Erro interno no servidor");
+
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
 	}
 }

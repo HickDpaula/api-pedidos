@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.henrique.dev.pedidos_api.domain.ItemPedido;
 import com.henrique.dev.pedidos_api.domain.Pedido;
 import com.henrique.dev.pedidos_api.domain.StatusPedido;
+import com.henrique.dev.pedidos_api.domain.Usuario;
 import com.henrique.dev.pedidos_api.pedido.dto.AtualizarStatusRequest;
 import com.henrique.dev.pedidos_api.pedido.dto.CriarPedidoRequest;
 import com.henrique.dev.pedidos_api.pedido.dto.ItemPedidoRequest;
@@ -40,10 +41,11 @@ public class PedidoService {
 	}
 
 	@Transactional
-	public PedidoResponse criar(CriarPedidoRequest request) {
+	public PedidoResponse criar(CriarPedidoRequest request, Usuario usuario) {
 		Pedido pedido = new Pedido();
 		pedido.setCliente(request.cliente().trim());
 		pedido.setEnderecoEntrega(request.enderecoEntrega().trim());
+		pedido.setUsuario(usuario);
 		pedido.setStatus(StatusPedido.RECEBIDO);
 
 		for (ItemPedidoRequest itemRequest : request.itens()) {
@@ -58,20 +60,20 @@ public class PedidoService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<PedidoResponse> listarTodos() {
-		return pedidoRepository.findAll().stream()
+	public List<PedidoResponse> listarTodos(Usuario usuario) {
+		return pedidoRepository.findByUsuario(usuario).stream()
 				.map(PedidoResponse::from)
 				.toList();
 	}
 
 	@Transactional(readOnly = true)
-	public PedidoResponse buscarPorId(Long id) {
-		return PedidoResponse.from(buscarPedido(id));
+	public PedidoResponse buscarPorId(Long id, Usuario usuario) {
+		return PedidoResponse.from(buscarPedido(id, usuario));
 	}
 
 	@Transactional
-	public PedidoResponse atualizarStatus(Long id, AtualizarStatusRequest request) {
-		Pedido pedido = buscarPedido(id);
+	public PedidoResponse atualizarStatus(Long id, Usuario usuario, AtualizarStatusRequest request) {
+		Pedido pedido = buscarPedido(id, usuario);
 		StatusPedido statusAtual = pedido.getStatus();
 		StatusPedido novoStatus = request.status();
 
@@ -93,8 +95,8 @@ public class PedidoService {
 		return PedidoResponse.from(pedido);
 	}
 
-	private Pedido buscarPedido(Long id) {
-		return pedidoRepository.findById(id)
+	private Pedido buscarPedido(Long id, Usuario usuario) {
+		return pedidoRepository.findByIdAndUsuario(id, usuario)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido não encontrado"));
 	}
 }
