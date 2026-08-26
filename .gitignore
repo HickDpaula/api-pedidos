@@ -1,0 +1,5 @@
+# Documentação e ferramentas do Claude Code — ficam só locais, não sobem pro repositório.
+# (README.md já versionados continuam normalmente; isso só afasta .md novos.)
+*.md
+
+.claude/

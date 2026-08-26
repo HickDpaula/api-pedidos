@@ -39,3 +39,16 @@ export function isStatusFinal(status: StatusPedido) {
 export function isStatusAtivo(status: StatusPedido) {
   return STATUS_ATIVOS.includes(status)
 }
+
+// Espelha PedidoService.TRANSICOES_PERMITIDAS (backend) — mantenha os dois em sincronia.
+const TRANSICOES_PERMITIDAS: Record<StatusPedido, StatusPedido[]> = {
+  RECEBIDO: ['EM_PREPARO', 'CANCELADO'],
+  EM_PREPARO: ['SAIU_PARA_ENTREGA', 'CANCELADO'],
+  SAIU_PARA_ENTREGA: ['ENTREGUE', 'CANCELADO'],
+  ENTREGUE: [],
+  CANCELADO: [],
+}
+
+export function getTransicoesPermitidas(status: StatusPedido): StatusPedido[] {
+  return TRANSICOES_PERMITIDAS[status]
+}

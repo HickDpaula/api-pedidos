@@ -57,6 +57,13 @@
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
+			<!-- Necessario para TestRestTemplate (spring-boot-resttestclient depende
+			     de RestTemplateBuilder, mas nao a traz transitivamente). -->
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-restclient</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>

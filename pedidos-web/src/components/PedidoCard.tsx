@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent } from 'react'
 import {
   STATUS_LABELS,
-  STATUS_PEDIDO,
+  getTransicoesPermitidas,
   isStatusFinal,
 } from '../constants/statusPedido'
 import type { Pedido, StatusPedido } from '../types'
@@ -49,6 +49,7 @@ export default function PedidoCard({ pedido, onStatusChange }: PedidoCardProps) 
   }
 
   const labelPendente = pendingStatus ? STATUS_LABELS[pendingStatus] : ''
+  const opcoesStatus = [pedido.status, ...getTransicoesPermitidas(pedido.status)]
 
   return (
     <li className="rounded-xl border border-foody-border p-4 transition hover:border-foody-red/40">
@@ -88,7 +89,7 @@ export default function PedidoCard({ pedido, onStatusChange }: PedidoCardProps) 
             onChange={handleStatusChange}
             className="rounded-lg border border-foody-border px-2 py-1.5 text-sm outline-none focus:border-foody-red"
           >
-            {STATUS_PEDIDO.map((status) => (
+            {opcoesStatus.map((status) => (
               <option key={status} value={status}>
                 {STATUS_LABELS[status] || status}
               </option>
